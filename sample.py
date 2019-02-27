@@ -9,7 +9,7 @@ from keras.layers import LSTM, Dropout, TimeDistributed, Dense, Activation, Embe
 from model import build_model, load_weights
 
 DATA_DIR = './data'
-MODEL_DIR = './model'
+MODEL_DIR_TEMPLATE = './model/{}'
 
 def build_sample_model(vocab_size):
     model = Sequential()
@@ -22,15 +22,16 @@ def build_sample_model(vocab_size):
     model.add(Activation('softmax'))
     return model
 
-def sample(epoch, header, num_chars):
-    with open(os.path.join(MODEL_DIR, 'char_to_idx.json'), 'r') as f:
+def sample(epoch, header, num_chars, model_name):
+    model_dir = MODEL_DIR_TEMPLATE.format(model_name)
+    with open(os.path.join(model_dir, 'char_to_idx.json'), 'r') as f:
         char_to_idx = json.load(f)
     idx_to_char = { i: ch for (ch, i) in list(char_to_idx.items()) }
     vocab_size = len(char_to_idx)
 
     model = build_sample_model(vocab_size)
     load_weights(epoch, model)
-    model.save(os.path.join(MODEL_DIR, 'model.{}.h5'.format(epoch)))
+    model.save(os.path.join(model_dir, 'model.{}.h5'.format(epoch)))
 
     sampled = [char_to_idx[c] for c in header]
     for c in header[:-1]:
@@ -55,6 +56,7 @@ if __name__ == '__main__':
     parser.add_argument('epoch', type=int, help='epoch checkpoint to sample from')
     parser.add_argument('--seed', default='', help='initial seed for the generated text')
     parser.add_argument('--len', type=int, default=512, help='number of characters to sample (default 512)')
+    parser.add_argument('--model_name', default='default', help='model name')
     args = parser.parse_args()
 
-    print(sample(args.epoch, args.seed, args.len))
+    print(sample(args.epoch, args.seed, args.len, args.model_name))

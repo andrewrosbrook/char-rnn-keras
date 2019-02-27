@@ -9,15 +9,15 @@ import numpy as np
 from model import build_model, save_weights, load_weights
 
 DATA_DIR = './data'
-LOG_DIR = './logs'
-MODEL_DIR = './model'
+LOG_DIR_TEMPLATE = './logs/{}'
+MODEL_DIR_TEMPLATE = './model/{}'
 
 BATCH_SIZE = 16
 SEQ_LENGTH = 64
 
 class TrainLogger(object):
-    def __init__(self, file, resume=0):
-        self.file = os.path.join(LOG_DIR, file)
+    def __init__(self, log_dir, file, resume=0):
+        self.file = os.path.join(log_dir, file)
         self.epochs = resume
         if not resume:
             with open(self.file, 'w') as f:
@@ -47,7 +47,6 @@ def train(text, epochs=100, save_freq=10, resume=False):
     if resume:
         print("Attempting to resume last training...")
 
-        model_dir = Path(MODEL_DIR)
         c2ifile = model_dir.joinpath('char_to_idx.json')
         with c2ifile.open('r') as f:
             char_to_idx = json.load(f)
@@ -62,7 +61,7 @@ def train(text, epochs=100, save_freq=10, resume=False):
     else:
         resume_epoch = 0
         char_to_idx = {ch: i for (i, ch) in enumerate(sorted(list(set(text))))}
-        with open(os.path.join(MODEL_DIR, 'char_to_idx.json'), 'w') as f:
+        with open(os.path.join(model_dir, 'char_to_idx.json'), 'w') as f:
             json.dump(char_to_idx, f)
 
     vocab_size = len(char_to_idx)
@@ -72,10 +71,10 @@ def train(text, epochs=100, save_freq=10, resume=False):
                   optimizer='adam', metrics=['accuracy'])
 
     if resume:
-        load_weights(resume_epoch, model)
+        load_weights(resume_epoch, model, model_dir=model_dir)
 
     T = np.asarray([char_to_idx[c] for c in text], dtype=np.int32)
-    log = TrainLogger('training_log.csv', resume_epoch)
+    log = TrainLogger(log_dir, 'training_log.csv', resume_epoch)
 
     for epoch in range(resume_epoch, epochs):
         print('\nEpoch {}/{}'.format(epoch + 1, epochs))
@@ -89,7 +88,7 @@ def train(text, epochs=100, save_freq=10, resume=False):
         log.add_entry(np.average(losses), np.average(accs))
 
         if (epoch + 1) % save_freq == 0:
-            save_weights(epoch + 1, model)
+            save_weights(epoch + 1, model, model_dir=model_dir)
             print('Saved checkpoint to', 'weights.{}.h5'.format(epoch + 1))
 
 if __name__ == '__main__':
@@ -102,12 +101,16 @@ if __name__ == '__main__':
                         help='checkpoint save frequency')
     parser.add_argument('--resume', action='store_true',
                         help='resume from previously interrupted training')
+    parser.add_argument('--model-name', default='default', help='name of the model')
     args = parser.parse_args()
 
-    if not os.path.exists(LOG_DIR):
-        os.makedirs(LOG_DIR)
-    if not os.path.exists(MODEL_DIR):
-        os.makedirs(MODEL_DIR)
+    log_dir = Path(LOG_DIR_TEMPLATE.format(args.model_name))
+    model_dir = Path(MODEL_DIR_TEMPLATE.format(args.model_name))
+
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
 
     with open(os.path.join(DATA_DIR, args.input), 'r') as data_file:
         text = data_file.read()

@@ -2,3 +2,4 @@ logs/
 model/
 *.pyc
 .DS_Store
+.idea/
