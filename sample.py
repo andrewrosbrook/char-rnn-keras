@@ -30,7 +30,7 @@ def sample(epoch, header, num_chars, model_name):
     vocab_size = len(char_to_idx)
 
     model = build_sample_model(vocab_size)
-    load_weights(epoch, model)
+    load_weights(epoch, model, model_dir=model_dir)
     model.save(os.path.join(model_dir, 'model.{}.h5'.format(epoch)))
 
     sampled = [char_to_idx[c] for c in header]
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     parser.add_argument('epoch', type=int, help='epoch checkpoint to sample from')
     parser.add_argument('--seed', default='', help='initial seed for the generated text')
     parser.add_argument('--len', type=int, default=512, help='number of characters to sample (default 512)')
-    parser.add_argument('--model_name', default='default', help='model name')
+    parser.add_argument('--model-name', default='default', help='model name')
     args = parser.parse_args()
 
     print(sample(args.epoch, args.seed, args.len, args.model_name))
